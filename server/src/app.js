@@ -6,6 +6,21 @@ import authRoutes from './routes/auth.js';
 import bookingRoutes from './routes/bookings.js';
 import userRoutes from './routes/users.js';
 import maintenanceRoutes from './routes/maintenance.js';
+import { doubleCsrf } from 'csrf-csrf';
+import rateLimit from 'express-rate-limit';
+
+const { generateToken, doubleCsrfProtection } = doubleCsrf({
+  getSecret: () => process.env.JWT_SECRET,
+  cookieName: '__csrf',
+  cookieOptions: { httpOnly: false, sameSite: 'lax', secure: false },
+  getTokenFromRequest: (req) => req.headers['x-csrf-token'],
+});
+
+const maintenanceLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: 'Too many requests from this IP, please try again later.',
+});
 
 const app = express();
 
@@ -20,11 +35,15 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
+app.get('/api/csrf-token', (req, res) => {
+  const token = generateToken(req, res);
+  res.json({ csrfToken: token });
+});
 
 app.use('/api/auth', authRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/maintenance', maintenanceRoutes);
+app.use('/api/maintenance', maintenanceLimiter, doubleCsrfProtection, maintenanceRoutes);
 
 // Not found
 app.use((req, res) => {

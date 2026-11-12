@@ -20,6 +20,7 @@ const router = Router();
 //   2. DoS — there is no rate limiting anywhere, so the public list endpoint
 //      (and the writes) can be flooded with unlimited requests to exhaust the
 //      server.
+
 router.get('/', getAllRequests);
 router.get('/:id', getRequest);
 router.post('/', requireAuth, createRequest);

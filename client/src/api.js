@@ -1,4 +1,5 @@
 import axios from 'axios'
+let csrfToken = null
 
 // `withCredentials: true` makes the browser send the httpOnly auth cookie on
 // every request to the API — including requests triggered by a different site.
@@ -7,4 +8,20 @@ import axios from 'axios'
 export const api = axios.create({
   baseURL: 'http://localhost:4000/api',
   withCredentials: true
+})
+export async function fetchCsrfToken() {
+  const res = await api.get('/csrf-token')
+  csrfToken = res.data.csrfToken
+}
+
+api.interceptors.request.use(async config => {
+  if (config.method !== 'get') {
+    if (!csrfToken) {
+      await fetchCsrfToken()
+    }
+    config.headers['X-CSRF-Token'] = csrfToken
+  }
+  return config
+}, error => {
+  return Promise.reject(error)
 })

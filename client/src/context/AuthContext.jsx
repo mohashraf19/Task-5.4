@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
-import { api } from '../api'
+import { api, fetchCsrfToken } from '../api'
 
 const AuthContext = createContext(null)
 
@@ -11,7 +11,9 @@ export function AuthProvider({ children }) {
   // localStorage anymore — the browser holds the cookie and sends it on /auth/me.
   useEffect(() => {
     api.get('/auth/me')
-      .then(res => setUser(res.data.user || null))
+      .then(res => {setUser(res.data.user || null)
+        if (res.data.user) fetchCsrfToken()
+      })
       .catch(() => setUser(null))
       .finally(() => setLoading(false))
   }, [])
@@ -20,11 +22,13 @@ export function AuthProvider({ children }) {
     // The server sets the auth cookie in its response; nothing to store here.
     const res = await api.post('/auth/login', { email, password })
     setUser(res.data.user)
+    await fetchCsrfToken()
   }, [])
 
   const register = useCallback(async (name, email, password) => {
     const res = await api.post('/auth/register', { name, email, password })
     setUser(res.data.user)
+    await fetchCsrfToken()
   }, [])
 
   const logout = useCallback(async () => {
