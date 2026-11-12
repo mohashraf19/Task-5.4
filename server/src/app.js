@@ -9,16 +9,18 @@ import maintenanceRoutes from './routes/maintenance.js';
 import { doubleCsrf } from 'csrf-csrf';
 import rateLimit from 'express-rate-limit';
 
-const { generateToken, doubleCsrfProtection } = doubleCsrf({
+const { generateCsrfToken, doubleCsrfProtection } = doubleCsrf({
   getSecret: () => process.env.JWT_SECRET,
+  getSessionIdentifier: (req) => req.cookies?.token || '',
   cookieName: '__csrf',
   cookieOptions: { httpOnly: false, sameSite: 'lax', secure: false },
-  getTokenFromRequest: (req) => req.headers['x-csrf-token'],
+  getCsrfTokenFromRequest: (req) => req.headers['x-csrf-token'],
 });
+
 
 const maintenanceLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 10,
   message: 'Too many requests from this IP, please try again later.',
 });
 
@@ -36,7 +38,7 @@ app.use(cookieParser());
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.get('/api/csrf-token', (req, res) => {
-  const token = generateToken(req, res);
+  const token = generateCsrfToken(req, res);
   res.json({ csrfToken: token });
 });
 
